@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>AntiScam Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Ikonki -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="transition-theme">
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold">AntiScam Pro</h1>
+        <button id="toggleTheme" class="btn btn-outline-secondary">
+            <i class="fas fa-moon"></i> Zmień motyw
+        </button>
+    </div>
+
+    <form method="POST" class="bg-body-tertiary p-4 rounded shadow-sm">
+        <div class="mb-3">
+            <label for="message" class="form-label">Wiadomość:</label>
+            <textarea name="message" id="message" rows="3" class="form-control"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="phone" class="form-label">Numer telefonu:</label>
+            <input type="text" name="phone" id="phone" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label for="link" class="form-label">Link:</label>
+            <input type="text" name="link" id="link" class="form-control">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Sprawdź</button>
+    </form>
+
+    {% if result %}
+    <div class="mt-5">
+        <h4>Wyniki analizy:</h4>
+
+        {% if result.message %}
+            <div class="alert {{ 'alert-danger' if result.message.is_suspicious else 'alert-success' }}">
+                <strong>Wiadomość:</strong>
+                {% if result.message.is_suspicious %}
+                    Podejrzana. Znalezione wyrazy: <em>{{ result.message.suspicious_words | join(', ') }}</em>
+                {% else %}
+                    Brak podejrzanych treści.
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if result.phone %}
+            <div class="alert {{ 'alert-danger' if result.phone.is_suspicious else 'alert-success' }}">
+                <strong>Numer telefonu:</strong>
+                {% if result.phone.is_suspicious %}
+                    Podejrzany numer.
+                {% else %}
+                    Wygląda na bezpieczny.
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if result.link %}
+            <div class="alert {{ 'alert-danger' if result.link.is_suspicious else 'alert-success' }}">
+                <strong>Link:</strong>
+                {% if result.link.is_suspicious %}
+                    Podejrzany. Słowa-klucze: <em>{{ result.link.suspicious_patterns | join(', ') }}</em>
+                {% else %}
+                    Brak podejrzanych wzorców.
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    const btn = document.getElementById("toggleTheme");
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let darkMode = localStorage.getItem("darkMode") === "true" || prefersDark;
+
+    function applyTheme(dark) {
+        document.body.classList.toggle("dark-mode", dark);
+        btn.innerHTML = dark ? '<i class="fas fa-sun"></i> Jasny motyw' : '<i class="fas fa-moon"></i> Ciemny motyw';
+        localStorage.setItem("darkMode", dark);
+    }
+
+    btn.addEventListener("click", () => {
+        darkMode = !darkMode;
+        applyTheme(darkMode);
+    });
+
+    applyTheme(darkMode);
+</script>
+</body>
+</html>
