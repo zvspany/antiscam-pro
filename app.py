@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, jsonify
 from api.endpoints import check_message, check_phone, check_link
 
@@ -36,4 +37,5 @@ def api_check_link():
     return jsonify(check_link(data.get("url", "")))
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
