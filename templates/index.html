@@ -7,10 +7,8 @@
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <!-- Ikonki -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -19,92 +17,161 @@
 <div class="container py-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="fw-bold">AntiScam Pro</h1>
-        <button id="toggleTheme" class="btn btn-outline-secondary">
-            <i class="fas fa-moon"></i> Zmień motyw
-        </button>
+        <div>
+            <button id="toggleTheme" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-moon"></i> <span id="theme-btn-text" data-pl="Zmień motyw" data-en="Toggle theme">Zmień motyw</span>
+            </button>
+            <button id="toggleLanguage" class="btn btn-outline-secondary">
+                <i class="fas fa-language"></i> <span id="lang-btn-text">EN</span>
+            </button>
+        </div>
     </div>
 
     <form method="POST" class="bg-body-tertiary p-4 rounded shadow-sm">
+        <input type="hidden" name="lang" id="langInput" value="pl">
         <div class="mb-3">
-            <label for="message" class="form-label">Wiadomość:</label>
+            <label for="message" class="form-label" data-pl="Wiadomość:" data-en="Message:">Wiadomość:</label>
             <textarea name="message" id="message" rows="3" class="form-control"></textarea>
         </div>
-
         <div class="mb-3">
-            <label for="phone" class="form-label">Numer telefonu:</label>
+            <label for="phone" class="form-label" data-pl="Numer telefonu:" data-en="Phone number:">Numer telefonu:</label>
             <input type="text" name="phone" id="phone" class="form-control">
         </div>
-
         <div class="mb-3">
-            <label for="link" class="form-label">Link:</label>
+            <label for="link" class="form-label" data-pl="Link:" data-en="Link:">Link:</label>
             <input type="text" name="link" id="link" class="form-control">
         </div>
-
-        <button type="submit" class="btn btn-primary">Sprawdź</button>
+        <button type="submit" class="btn btn-primary" data-pl="Sprawdź" data-en="Check">Sprawdź</button>
     </form>
 
-    {% if result %}
-    <div class="mt-5">
-        <h4>Wyniki analizy:</h4>
-
-        {% if result.message %}
-            <div class="alert {{ 'alert-danger' if result.message.is_suspicious else 'alert-success' }}">
-                <strong>Wiadomość:</strong>
-                {% if result.message.is_suspicious %}
-                    Podejrzana. Znalezione wyrazy: <em>{{ result.message.suspicious_words | join(', ') }}</em>
-                {% else %}
-                    Brak podejrzanych treści.
-                {% endif %}
-            </div>
+    {% if result.message %}
+    <div class="alert {{ 'alert-danger' if result.message.is_suspicious else 'alert-success' }}">
+        <strong data-pl="Wiadomość:" data-en="Message:">Wiadomość:</strong>
+        {% if result.message.is_suspicious %}
+            {% if result.message.suspicious_words %}
+                <span data-pl="Podejrzana. Znalezione wyrazy:" data-en="Suspicious. Found words:">Podejrzana. Znalezione wyrazy:</span>
+                <em>{{ result.message.suspicious_words | join(', ') }}</em>
+            {% endif %}
+            {% if result.message.ai_result %}
+                <p data-pl="Wykryte przez AI:" data-en="Detected by AI:">Wykryte przez AI:</p>
+                <p>{{ result.message.ai_result.label }} ({{ (result.message.ai_result.confidence * 100) | round(1) }}%)</p>
+            {% endif %}
+        {% else %}
+            <span data-pl="Brak podejrzanych treści." data-en="No suspicious content.">Brak podejrzanych treści.</span>
         {% endif %}
+    </div>
+    {% endif %}
 
-        {% if result.phone %}
-            <div class="alert {{ 'alert-danger' if result.phone.is_suspicious else 'alert-success' }}">
-                <strong>Numer telefonu:</strong>
-                {% if result.phone.is_suspicious %}
-                    Podejrzany numer.
-                {% else %}
-                    Wygląda na bezpieczny.
-                {% endif %}
-            </div>
+    {% if result.phone %}
+    <div class="alert {{ 'alert-danger' if result.phone.is_suspicious else 'alert-success' }}">
+        <strong data-pl="Numer telefonu:" data-en="Phone number:">Numer telefonu:</strong>
+        {% if result.phone.is_suspicious %}
+            <span data-pl="Podejrzany numer." data-en="Suspicious number.">Podejrzany numer.</span>
+            <p data-pl="Powód podejrzenia: Numer w bazie danych podejrzanych numerów." data-en="Reason: Number found in suspicious database.">
+                Powód podejrzenia: Numer w bazie danych podejrzanych numerów.
+            </p>
+        {% else %}
+            <span data-pl="Wygląda na bezpieczny." data-en="Looks safe.">Wygląda na bezpieczny.</span>
         {% endif %}
+    </div>
+    {% endif %}
 
-        {% if result.link %}
-            <div class="alert {{ 'alert-danger' if result.link.is_suspicious else 'alert-success' }}">
-                <strong>Link:</strong>
-                {% if result.link.is_suspicious %}
-                    Podejrzany. Powody podejrzeń: 
-                    <ul>
-                        {% for reason in result.link.suspicious_words %}
-                            <li>{{ reason }}</li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    Brak podejrzanych wzorców.
-                {% endif %}
-            </div> <!-- Poprawne zamknięcie div -->
+    {% if result.link %}
+    <div class="alert {{ 'alert-danger' if result.link.is_suspicious else 'alert-success' }}">
+        <strong data-pl="Link:" data-en="Link:">Link:</strong>
+        {% if result.link.is_suspicious %}
+            <span data-pl="Podejrzany. Powody podejrzeń:" data-en="Suspicious. Reasons:">Podejrzany. Powody podejrzeń:</span>
+            <ul>
+                {% for reason in result.link.suspicious_words %}
+                    <li>{{ reason }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <span data-pl="Brak podejrzanych wzorców." data-en="No suspicious patterns.">Brak podejrzanych wzorców.</span>
         {% endif %}
-    </div> <!-- Poprawne zamknięcie kontenera wyników analizy -->
+    </div>
+    {% endif %}
+
+    {% if result.virustotal %}
+    <div class="alert {{ 'alert-danger' if result.virustotal.detected else 'alert-success' }}">
+        <strong data-pl="Wynik z VirusTotal:" data-en="VirusTotal Result:">Wynik z VirusTotal:</strong>
+        {% if result.virustotal.detected %}
+            <span data-pl="Link jest podejrzany. Detale:" data-en="Link is suspicious. Details:">Link jest podejrzany. Detale:</span>
+            <ul>
+                <li data-pl="Wykryte:" data-en="Detected:">Wykryte:</li> {{ result.virustotal.positives }} / {{ result.virustotal.total }}
+                <li data-pl="Data skanowania:" data-en="Scan date:">Data skanowania:</li> {{ result.virustotal.scan_date }}
+            </ul>
+        {% else %}
+            <span data-pl="Link jest bezpieczny." data-en="Link is safe.">Link jest bezpieczny.</span>
+        {% endif %}
+    </div>
     {% endif %}
 </div>
 
+<!-- Sekcja Informacji -->
+<div id="infoSection" class="container py-5">
+    <h2 data-pl="O AntiScam Pro" data-en="About AntiScam Pro">O AntiScam Pro</h2>
+    <p data-pl="AntiScam Pro to zaawansowana aplikacja do wykrywania oszustw..." data-en="AntiScam Pro is an advanced tool for scam detection...">
+        AntiScam Pro to zaawansowana aplikacja do wykrywania oszustw, spamu i podejrzanych linków. Korzysta z technologii sztucznej inteligencji (AI) oraz bazy danych, aby zapewnić użytkownikom bezpieczne korzystanie z komunikacji elektronicznej.
+    </p>
+
+    <h3 data-pl="Funkcje:" data-en="Features:">Funkcje:</h3>
+    <ul>
+        <li data-pl="Wykrywanie podejrzanych wiadomości tekstowych." data-en="Detects suspicious text messages.">Wykrywanie podejrzanych wiadomości tekstowych.</li>
+        <li data-pl="Weryfikacja numerów telefonów i linków." data-en="Phone number and link verification.">Weryfikacja numerów telefonów i linków.</li>
+        <li data-pl="Integracja z VirusTotal w celu sprawdzenia bezpieczeństwa linków" data-en="Integration with VirusTotal to check the safety of links">Integracja z VirusTotal w celu sprawdzenia bezpieczeństwa linków.</li>
+        <li data-pl="Śledzenie wyników analizy i zapewnianie informacji zwrotnej o podejrzanych elementach." data-en="Track analysis results and provide feedback on suspicious items.">Śledzenie wyników analizy i zapewnianie informacji zwrotnej o podejrzanych elementach.</li>
+        <li>
+            <details>
+                <summary data-pl="Obszerne bazy danych." data-en="Extensive databases.">Obszerne bazy danych.</summary>
+                <p style="color: #979797;" data-pl="Nasza baza danych zawiera ponad 186 000 podejrzanych domen, które są regularnie aktualizowane, aby zapewnić najwyższy poziom bezpieczeństwa." data-en="Our database contains over 186,000 suspicious domains that are regularly updated to ensure the highest level of security.">
+                </p>
+            </details>
+        </li>
+    </ul>
+
+    <p data-pl="Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikanie zagrożeń." data-en="Our app provides users with an easy way to recognize fraud attempts and avoid threats.">
+        Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikanie zagrożeń.
+    </p>
+</div>
+
 <script>
-    const btn = document.getElementById("toggleTheme");
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    let darkMode = localStorage.getItem("darkMode") === "true" || prefersDark;
+    const btnTheme = document.getElementById("toggleTheme");
+    const btnLang = document.getElementById("toggleLanguage");
+    const themeText = document.getElementById("theme-btn-text");
+    const langText = document.getElementById("lang-btn-text");
+    const langInput = document.getElementById("langInput");
+
+    let darkMode = localStorage.getItem("darkMode") === "true" || window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let lang = localStorage.getItem("lang") || "pl";
 
     function applyTheme(dark) {
         document.body.classList.toggle("dark-mode", dark);
-        btn.innerHTML = dark ? '<i class="fas fa-sun"></i> Jasny motyw' : '<i class="fas fa-moon"></i> Ciemny motyw';
+        themeText.textContent = dark ? "Jasny motyw" : "Ciemny motyw";
         localStorage.setItem("darkMode", dark);
     }
 
-    btn.addEventListener("click", () => {
+    function applyLanguage(language) {
+        document.querySelectorAll("[data-pl]").forEach(el => {
+            el.textContent = el.dataset[language];
+        });
+        langText.textContent = language === "pl" ? "EN" : "PL";
+        langInput.value = language;
+        localStorage.setItem("lang", language);
+    }
+
+    btnTheme.addEventListener("click", () => {
         darkMode = !darkMode;
         applyTheme(darkMode);
     });
 
+    btnLang.addEventListener("click", () => {
+        lang = lang === "pl" ? "en" : "pl";
+        applyLanguage(lang);
+    });
+
     applyTheme(darkMode);
+    applyLanguage(lang);
 </script>
 </body>
 </html>

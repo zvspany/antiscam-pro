@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request, jsonify
 from api.endpoints import check_message, check_phone, check_link
+from api.virustotal import scan_url_with_virustotal
 
 app = Flask(__name__)
 
@@ -21,6 +22,9 @@ def index():
             result["phone"] = check_phone(phone)
         if link:
             result["link"] = check_link(link)
+            # Sprawdzamy link w VirusTotal
+            virustotal_result = scan_url_with_virustotal(link)
+            result["virustotal"] = virustotal_result
 
     # Przekazuje wyniki do szablonu
     return render_template("index.html", result=result)
