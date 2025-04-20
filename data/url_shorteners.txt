@@ -1,0 +1,7 @@
+bit.ly
+tinyurl.com
+t.co
+goo.gl
+rb.gy
+is.gd
+tiny.pl

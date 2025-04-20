@@ -73,13 +73,18 @@
             <div class="alert {{ 'alert-danger' if result.link.is_suspicious else 'alert-success' }}">
                 <strong>Link:</strong>
                 {% if result.link.is_suspicious %}
-                    Podejrzany. Słowa-klucze: <em>{{ result.link.suspicious_patterns | join(', ') }}</em>
+                    Podejrzany. Powody podejrzeń: 
+                    <ul>
+                        {% for reason in result.link.suspicious_words %}
+                            <li>{{ reason }}</li>
+                        {% endfor %}
+                    </ul>
                 {% else %}
                     Brak podejrzanych wzorców.
                 {% endif %}
-            </div>
+            </div> <!-- Poprawne zamknięcie div -->
         {% endif %}
-    </div>
+    </div> <!-- Poprawne zamknięcie kontenera wyników analizy -->
     {% endif %}
 </div>
 

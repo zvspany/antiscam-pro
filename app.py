@@ -7,11 +7,14 @@ app = Flask(__name__)
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = {}
+    
+    # Obsługuje POST z formularza
     if request.method == "POST":
         message = request.form.get("message")
         phone = request.form.get("phone")
         link = request.form.get("link")
 
+        # Sprawdza wiadomość, numer telefonu i link
         if message:
             result["message"] = check_message(message)
         if phone:
@@ -19,6 +22,7 @@ def index():
         if link:
             result["link"] = check_link(link)
 
+    # Przekazuje wyniki do szablonu
     return render_template("index.html", result=result)
 
 @app.route("/api/check_message", methods=["POST"])
