@@ -13,3 +13,5 @@ transformers==4.30.2
 torch==2.0.1
 python-dotenv==1.0.0
 numpy==1.24.3
+pytz==2023.3
+tzlocal==4.3

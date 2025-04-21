@@ -5,28 +5,33 @@
     <title>AntiScam Pro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Ikonki -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="transition-theme">
 
-<div class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="fw-bold">AntiScam Pro</h1>
-        <div>
-            <button id="toggleTheme" class="btn btn-outline-secondary me-2">
+<div class="container py-5"> {# Standardowy kontener Bootstrap, responsywny #}
+    {# Nagłówek z tytułem i przyciskami - używamy flexbox z responsywnością #}
+    {# d-flex justify-content-between align-items-center standardowo w rzędzie #}
+    {# flex-column-sm-row: na ekranach mniejszych niż 'sm' (small) stackuj w kolumnę, od 'sm' w górę (row) #}
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-column flex-sm-row">
+        {# Tytuł - dodajemy margines dolny na małych ekranach (mb-3), usuwamy od sm w górę (mb-sm-0) #}
+        <h1 class="fw-bold mb-3 mb-sm-0">AntiScam Pro</h1>
+        {# Kontener przycisków - też stackujemy na małych ekranach #}
+        <div class="d-flex flex-column flex-sm-row">
+            {# Przycisk motywu - dodajemy margines dolny na małych ekranach (mb-2), prawy od sm w górę (me-sm-2) #}
+            <button id="toggleTheme" class="btn btn-outline-secondary mb-2 me-sm-2">
                 <i class="fas fa-moon"></i> <span id="theme-btn-text" data-pl="Zmień motyw" data-en="Toggle theme">Zmień motyw</span>
             </button>
+            {# Przycisk języka - nie potrzebuje dodatkowych marginesów przy stackowaniu/rzędzie #}
             <button id="toggleLanguage" class="btn btn-outline-secondary">
                 <i class="fas fa-language"></i> <span id="lang-btn-text">EN</span>
             </button>
         </div>
     </div>
 
+    {# Formularz - standardowe form-control są responsywne wewnątrz rodzica #}
     <form method="POST" class="bg-body-tertiary p-4 rounded shadow-sm">
         <input type="hidden" name="lang" id="langInput" value="pl">
         <div class="mb-3">
@@ -44,96 +49,200 @@
         <button type="submit" class="btn btn-primary" data-pl="Sprawdź" data-en="Check">Sprawdź</button>
     </form>
 
-    {% if result.message %}
-    <div class="alert {{ 'alert-danger' if result.message.is_suspicious else 'alert-success' }}">
-        <strong data-pl="Wiadomość:" data-en="Message:">Wiadomość:</strong>
-        {% if result.message.is_suspicious %}
-            {% if result.message.suspicious_words %}
-                <span data-pl="Podejrzana. Znalezione wyrazy:" data-en="Suspicious. Found words:">Podejrzana. Znalezione wyrazy:</span>
-                <em>{{ result.message.suspicious_words | join(', ') }}</em>
+    {# Sekcja wyników - alerty Bootstrapa są blokowe i responsywnie układają się #}
+    {# Dodano div.mt-4 dla odstępu od formularza #}
+    <div class="mt-4">
+
+        {# Wynik wiadomości #}
+        {% if result.message %}
+        <div class="alert {{ 'alert-danger' if result.message.is_suspicious else 'alert-success' }}">
+            <strong data-pl="Wiadomość:" data-en="Message:">Wiadomość:</strong>
+            {% if result.message.is_suspicious %}
+                {% if result.message.suspicious_words %}
+                    <span data-pl="Podejrzana. Znalezione wyrazy:" data-en="Suspicious. Found words:">Podejrzana. Znalezione wyrazy:</span>
+                    <em>{{ result.message.suspicious_words | join(', ') }}</em>
+                {% endif %}
+                {% if result.message.ai_result %}
+                    <p data-pl="Wykryte przez AI:" data-en="Detected by AI:">Wykryte przez AI:</p>
+                    <p>{{ result.message.ai_result.label }} ({{ (result.message.ai_result.confidence * 100) | round(1) }}%)</p>
+                {% endif %}
+            {% else %}
+                <span data-pl="Brak podejrzanych treści." data-en="No suspicious content.">Brak podejrzanych treści.</span>
             {% endif %}
-            {% if result.message.ai_result %}
-                <p data-pl="Wykryte przez AI:" data-en="Detected by AI:">Wykryte przez AI:</p>
-                <p>{{ result.message.ai_result.label }} ({{ (result.message.ai_result.confidence * 100) | round(1) }}%)</p>
-            {% endif %}
-        {% else %}
-            <span data-pl="Brak podejrzanych treści." data-en="No suspicious content.">Brak podejrzanych treści.</span>
+        </div>
         {% endif %}
-    </div>
-    {% endif %}
 
-    {% if result.phone %}
-    <div class="alert {{ 'alert-danger' if result.phone.is_suspicious else 'alert-success' }}">
-        <strong data-pl="Numer telefonu:" data-en="Phone number:">Numer telefonu:</strong>
-        {% if result.phone.is_suspicious %}
-            <span data-pl="Podejrzany numer." data-en="Suspicious number.">Podejrzany numer.</span>
-            <p data-pl="Powód podejrzenia: Numer w bazie danych podejrzanych numerów." data-en="Reason: Number found in suspicious database.">
-                Powód podejrzenia: Numer w bazie danych podejrzanych numerów.
-            </p>
-        {% else %}
-            <span data-pl="Wygląda na bezpieczny." data-en="Looks safe.">Wygląda na bezpieczny.</span>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    {% if result.link %}
-    <div class="alert {{ 'alert-danger' if result.link.is_suspicious else 'alert-success' }}">
-        <strong data-pl="Link:" data-en="Link:">Link:</strong>
-        {% if result.link.is_suspicious %}
-            <span data-pl="Podejrzany. Powody podejrzeń:" data-en="Suspicious. Reasons:">Podejrzany. Powody podejrzeń:</span>
-            <ul>
-                {% for reason in result.link.suspicious_words %}
-                    <li>{{ reason }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <span data-pl="Brak podejrzanych wzorców." data-en="No suspicious patterns.">Brak podejrzanych wzorców.</span>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    {% if result.virustotal %}
-    <div class="alert {{ 'alert-danger' if result.virustotal.detected else 'alert-success' }}">
-        <strong data-pl="Wynik z VirusTotal:" data-en="VirusTotal Result:">Wynik z VirusTotal:</strong>
-        {% if result.virustotal.detected %}
-            <span data-pl="Link jest podejrzany. Detale:" data-en="Link is suspicious. Details:">Link jest podejrzany. Detale:</span>
-            <ul>
-                <li data-pl="Wykryte:" data-en="Detected:">Wykryte:</li> {{ result.virustotal.positives }} / {{ result.virustotal.total }}
-                <li data-pl="Data skanowania:" data-en="Scan date:">Data skanowania:</li> {{ result.virustotal.scan_date }}
-            </ul>
-        {% else %}
-            <span data-pl="Link jest bezpieczny." data-en="Link is safe.">Link jest bezpieczny.</span>
-        {% endif %}
-    </div>
-    {% endif %}
-</div>
-
-<!-- Sekcja Informacji -->
-<div id="infoSection" class="container py-5">
-    <h2 data-pl="O AntiScam Pro" data-en="About AntiScam Pro">O AntiScam Pro</h2>
-    <p data-pl="AntiScam Pro to zaawansowana aplikacja do wykrywania oszustw..." data-en="AntiScam Pro is an advanced tool for scam detection...">
-        AntiScam Pro to zaawansowana aplikacja do wykrywania oszustw, spamu i podejrzanych linków. Korzysta z technologii sztucznej inteligencji (AI) oraz bazy danych, aby zapewnić użytkownikom bezpieczne korzystanie z komunikacji elektronicznej.
-    </p>
-
-    <h3 data-pl="Funkcje:" data-en="Features:">Funkcje:</h3>
-    <ul>
-        <li data-pl="Wykrywanie podejrzanych wiadomości tekstowych." data-en="Detects suspicious text messages.">Wykrywanie podejrzanych wiadomości tekstowych.</li>
-        <li data-pl="Weryfikacja numerów telefonów i linków." data-en="Phone number and link verification.">Weryfikacja numerów telefonów i linków.</li>
-        <li data-pl="Integracja z VirusTotal w celu sprawdzenia bezpieczeństwa linków" data-en="Integration with VirusTotal to check the safety of links">Integracja z VirusTotal w celu sprawdzenia bezpieczeństwa linków.</li>
-        <li data-pl="Śledzenie wyników analizy i zapewnianie informacji zwrotnej o podejrzanych elementach." data-en="Track analysis results and provide feedback on suspicious items.">Śledzenie wyników analizy i zapewnianie informacji zwrotnej o podejrzanych elementach.</li>
-        <li>
-            <details>
-                <summary data-pl="Obszerne bazy danych." data-en="Extensive databases.">Obszerne bazy danych.</summary>
-                <p style="color: #979797;" data-pl="Nasza baza danych zawiera ponad 186 000 podejrzanych domen, które są regularnie aktualizowane, aby zapewnić najwyższy poziom bezpieczeństwa." data-en="Our database contains over 186,000 suspicious domains that are regularly updated to ensure the highest level of security.">
+        {# Wynik telefonu #}
+        {% if result.phone %}
+        <div class="alert {{ 'alert-danger' if result.phone.is_suspicious else 'alert-success' }}">
+            <strong data-pl="Numer telefonu:" data-en="Phone number:">Numer telefonu:</strong>
+            {% if result.phone.is_suspicious %}
+                <span data-pl="Podejrzany numer." data-en="Suspicious number.">Podejrzany numer.</span>
+                <p data-pl="Powód podejrzenia: Numer w bazie danych podejrzanych numerów." data-en="Reason: Number found in suspicious database.">
+                    Powód podejrzenia: Numer w bazie danych podejrzanych numerów.
                 </p>
-            </details>
-        </li>
-    </ul>
+            {% else %}
+                <span data-pl="Wygląda na bezpieczny." data-en="Looks safe.">Wygląda na bezpieczny.</span>
+            {% endif %}
+        </div>
+        {% endif %}
 
-    <p data-pl="Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikanie zagrożeń." data-en="Our app provides users with an easy way to recognize fraud attempts and avoid threats.">
+        {# Sekcja wyników linku - Ujednolicona logika wyświetlania #}
+        {# Zakładamy, że result.link zawiera wynik lokalny, a result.virustotal wynik z VT #}
+        {% if result.link is defined or result.virustotal is defined %} {# Show this section if local OR VT result exists #}
+            {# Określamy, czy całość jest podejrzana na podstawie obu wyników #}
+            {% set link_local_suspicious = result.link is defined and result.link.is_suspicious %}
+            {% set vt_detected_flag = result.virustotal is defined and result.virustotal.detected %}
+            {% set overall_link_suspicious = link_local_suspicious or vt_detected_flag %}
+
+            <div class="alert {{ 'alert-danger' if overall_link_suspicious else 'alert-success' }}">
+                <strong data-pl="Link:" data-en="Link:">Link:</strong>
+
+                {# Wyświetlamy ogólny status #}
+                {% if overall_link_suspicious %}
+                    <span style="color: red;" data-pl="Podejrzany." data-en="Suspicious.">Podejrzany.</span>
+                {% else %}
+                    <span style="color: green;" data-pl="Brak podejrzanej aktywności." data-en="No suspicious activity detected.">Brak podejrzanej aktywności.</span>
+                {% endif %}
+
+                {# Rozpoczynamy listę szczegółów analizy #}
+                <p data-pl="Szczegóły analizy:" data-en="Analysis Details:">Szczegóły analizy:</p>
+                <ul>
+                    {# Punkt listy dla analizy lokalnej #}
+                    {% if result.link is defined %}
+                         <li>
+                             <span data-pl="Analiza lokalna:" data-en="Local analysis:">Analiza lokalna:</span>
+                             {% if result.link.is_suspicious %}
+                                 <span style="color: red;" data-pl="Podejrzany." data-en="Suspicious.">Podejrzany.</span>
+                             {% else %}
+                                 <span style="color: green;" data-pl="Brak podejrzeń." data-en="No suspicion.">Brak podejrzeń.</span>
+                             {% endif %}
+                         </li>
+                         {# Wyświetl szczegóły lokalne jako podpunkty, jeśli są #}
+                         {% if result.link.details %}
+                             {% for reason in result.link.details %}
+                                 <li>
+                                     - <span data-pl="{{ reason.get('data-pl', reason.get('text', '')) }}" data-en="{{ reason.get('data-en', reason.get('text', '')) }}">
+                                         {{ reason.get('text', 'Brak opisu szczegółu lokalnego / No local detail description') }}
+                                     </span>
+                                 </li>
+                             {% endfor %}
+                         {% endif %}
+                     {% else %}
+                         {# Komunikat jeśli wynik lokalny w ogóle nie przyszedł #}
+                         <li><span data-pl="Brak wyniku lokalnego sprawdzenia linku." data-en="No local link check result.">Brak wyniku lokalnego sprawdzenia linku.</span></li>
+                     {% endif %}
+
+                    {# Punkt listy dla analizy VirusTotal #}
+                    {% if result.virustotal is defined %} {# Sprawdzamy, czy wynik VT istnieje #}
+                         <li>
+                             <span data-pl="Analiza VirusTotal:" data-en="VirusTotal analysis:">Analiza VirusTotal:</span>
+                             {% if result.virustotal.get('error') %} {# Wyświetl błąd VT, jeśli wystąpił #}
+                                  <span style="color: orange;" data-pl="Błąd:" data-en="Error:">Błąd:</span> {{ result.virustotal.error }}
+                             {% else %} {# Jeśli nie ma błędu, wyświetl wyniki skanowania #}
+                                  <span data-pl="Wykryte przez silniki:" data-en="Detected by engines:">Wykryte przez silniki:</span> {{ result.virustotal.positives }} / {{ result.virustotal.total }}
+                                  <br><span data-pl="Data ostatniego skanowania:" data-en="Last scan date:">Data ostatniego skanowania:</span> {{ result.virustotal.scan_date }}
+                             {% endif %}
+                         </li>
+                     {% else %} {# Jeśli wynik VT w ogóle nie przyszedł #}
+                         <li><span data-pl="Brak wyniku VirusTotal (np. skanowanie pominięto lub błąd połączenia)." data-en="No VirusTotal result (e.g., scan skipped or connection error).">Brak wyniku VirusTotal (np. skanowanie pominięto lub błąd połączenia).</span></li>
+                     {% endif %}
+
+                     {# Opcjonalnie: Możesz dodać tu inne punkty listy dla innych analiz, jeśli będą w przyszłości #}
+
+                </ul> {# Koniec listy szczegółów analizy #}
+
+                {# Opcjonalnie: można wyświetlić status is_valid z wyniku lokalnego #}
+                {# {% if result.link is defined %}<p>Is Valid URL: {{ result.link.is_valid }}</p>{% endif %} #}
+
+            </div> {# <-- Koniec div.alert dla wyniku linku #}
+        {% endif %} {# <-- Koniec głównego ifa dla linku/VT #}
+
+    </div> {# <-- Koniec div.mt-4 dla sekcji wyników #}
+
+
+    {# Sekcja Informacje i Statystyki #}
+    {# Kontener dla informacji i statystyk - używa systemu grid col-md-6 #}
+    <div class="container mt-4">
+        <div class="row g-4">
+            <div class="col-md-6"> {# Na ekranach < md będzie na całej szerokości, >= md na 6 kolumnach #}
+                <div class="card h-100 transition-theme">
+                    <div class="card-body">
+                        <h2 class="card-title" data-pl="O AntiScam Pro" data-en="About AntiScam Pro">O AntiScam Pro</h2>
+                        <p class="card-text" data-pl="AntiScam Pro to zaawansowana aplikacja do wykrywania oszustw..." data-en="AntiScam Pro is an advanced tool for scam detection...">
+                            AntiScam Pro to zaawansowana aplikacja do wykrywania oszustw, spamu i podejrzanych linków. Korzysta z technologii sztucznej inteligencji (AI) oraz bazy danych, aby zapewnić bezpieczeństwo.
+                        </p>
+
+                        <h3 class="card-title" data-pl="Funkcje:" data-en="Features:">Funkcje:</h3>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item transition-theme" data-pl="Wykrywanie podejrzanych wiadomości tekstowych" data-en="Detects suspicious text messages">Wykrywanie podejrzanych wiadomości tekstowych</li>
+                            <li class="list-group-item transition-theme" data-pl="Weryfikacja numerów telefonów i linków" data-en="Phone number and link verification">Weryfikacja numerów telefonów i linków</li>
+                            <li class="list-group-item transition-theme" data-pl="Integracja z VirusTotal" data-en="Integration with VirusTotal">Integracja z VirusTotal</li>
+                            <li class="list-group-item transition-theme">
+                                <details>
+                                    <summary data-pl="Obszerne bazy danych" data-en="Extensive databases">Obszerne bazy danych</summary>
+                                    <p class="text-muted mt-2 transition-theme" data-pl="Nasza baza zawiera ponad 186 000 podejrzanych domen." data-en="Our database contains over 186,000 suspicious domains.">
+                                        Nasza baza zawiera ponad 186 000 podejrzanych domen.
+                                    </p>
+                                </details>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6"> {# Na ekranach < md będzie na całej szerokości, >= md na 6 kolumnach #}
+                <div class="card h-100 transition-theme">
+                    <div class="card-body">
+                        <h3 class="card-title" data-pl="📊 Statystyki globalne" data-en="📊 Global statistics">📊 Statystyki globalne</h3>
+                        <p class="text-muted transition-theme" data-pl="(od uruchomienia serwera)" data-en="(since server start)">(od uruchomienia serwera)</p>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item transition-theme">
+                                <span data-pl="Wiadomości sprawdzone:" data-en="Messages checked:">Wiadomości sprawdzone:</span>
+                                <span class="badge bg-primary">{{ global_stats.messages_checked }}</span>
+                            </li>
+                            <li class="list-group-item transition-theme">
+                                <span data-pl="Numery sprawdzone:" data-en="Phones checked:">Numery sprawdzone:</span>
+                                <span class="badge bg-primary">{{ global_stats.phones_checked }}</span>
+                            </li>
+                            <li class="list-group-item transition-theme">
+                                <span data-pl="Linki sprawdzone:" data-en="Links checked:">Linki sprawdzone:</span>
+                                <span class="badge bg-primary">{{ global_stats.links_checked }}</span>
+                            </li>
+                        </ul>
+
+                        <h3 class="card-title mt-4" data-pl="👤 Twoje statystyki" data-en="👤 Your statistics">👤 Twoje statystyki</h3>
+                        <p class="text-muted transition-theme" data-pl="(ta sesja)" data-en="(this session)">(ta sesja)</p>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item transition-theme">
+                                <span data-pl="Wiadomości sprawdzone:" data-en="Messages checked:">Wiadomości sprawdzone:</span>
+                                <span class="badge bg-info">{{ session_stats.messages_checked }}</span>
+                            </li>
+                            <li class="list-group-item transition-theme">
+                                <span data-pl="Numery sprawdzone:" data-en="Phones checked:">Numery sprawdzone:</span>
+                                <span class="badge bg-info">{{ session_stats.phones_checked }}</span>
+                            </li>
+                            <li class="list-group-item transition-theme">
+                                <span data-pl="Linki sprawdzone:" data-en="Links checked:">Linki sprawdzone:</span>
+                                <span class="badge bg-info">{{ session_stats.links_checked }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> {# <-- Koniec div.container mt-4 dla Informacji/Statystyk #}
+
+    {# Ten paragraf był poza kontenerem - dodano klasy dla lepszego wyglądu #}
+    <p class="mt-4 text-center text-muted" data-pl="Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikanie zagrożeń." data-en="Our app provides users with an easy way to recognize fraud attempts and avoid threats.">
         Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikanie zagrożeń.
     </p>
-</div>
+
+</div> {# <-- Koniec głównego div.container py-5 #}
+
+{# Skrypty JS - Bootstrap JS jest potrzebny dla niektórych komponentów (np. modali, dropdownów), ale nie dla samego układu grid/flex #}
+{# Dodano skrypt Bootstrap JS #}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     const btnTheme = document.getElementById("toggleTheme");
@@ -142,24 +251,64 @@
     const langText = document.getElementById("lang-btn-text");
     const langInput = document.getElementById("langInput");
 
-    let darkMode = localStorage.getItem("darkMode") === "true" || window.matchMedia('(prefers-color-scheme: dark)').matches;
-    let lang = localStorage.getItem("lang") || "pl";
+    // Preferencja systemu użytkownika dla trybu ciemnego
+    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
 
-    function applyTheme(dark) {
-        document.body.classList.toggle("dark-mode", dark);
-        themeText.textContent = dark ? "Jasny motyw" : "Ciemny motyw";
-        localStorage.setItem("darkMode", dark);
+    // Pobierz preferencje z localStorage, lub użyj preferencji systemu
+    let darkMode = localStorage.getItem("darkMode");
+    if (darkMode === null) {
+        darkMode = prefersDarkMode.matches; // Użyj preferencji systemu przy pierwszym uruchomieniu
+    } else {
+        darkMode = (darkMode === "true"); // Konwertuj string z localStorage na boolean
+    }
+
+    let lang = localStorage.getItem("lang") || "pl"; // Pobierz język z localStorage lub domyślnie PL
+
+    // Funkcja aktualizująca tekst przycisku motywu w zależności od trybu (ciemny/jasny) i języka
+    function updateThemeButtonText(isDarkMode, currentLang) {
+        const textPl = isDarkMode ? "Jasny motyw" : "Ciemny motyw";
+        const textEn = isDarkMode ? "Light theme" : "Dark theme";
+        // Aktualizujemy dataset na przycisku, aby prawidłowo działała zmiana języka PO zmianie motywu
+        themeText.dataset.pl = textPl;
+        themeText.dataset.en = textEn;
+        // Ustawiamy widoczny tekst na podstawie aktualnie wybranego języka
+        themeText.textContent = currentLang === "pl" ? textPl : textEn;
+
+        // Aktualizujemy ikonę
+        const themeIcon = btnTheme.querySelector('i');
+        if (themeIcon) {
+            themeIcon.classList.toggle('fa-moon', isDarkMode);
+            themeIcon.classList.toggle('fa-sun', !isDarkMode);
+        }
+    }
+
+
+    function applyTheme(isDarkMode) {
+        document.body.classList.toggle("dark-mode", isDarkMode);
+        // Aktualizuj tekst przycisku i ikonę
+        updateThemeButtonText(isDarkMode, lang);
+        localStorage.setItem("darkMode", isDarkMode);
     }
 
     function applyLanguage(language) {
         document.querySelectorAll("[data-pl]").forEach(el => {
-            el.textContent = el.dataset[language];
+            // Sprawdzamy, czy element ma oba atrybuty data-pl i data-en
+            if (el.dataset.pl && el.dataset.en) {
+                 el.textContent = el.dataset[language];
+            }
         });
         langText.textContent = language === "pl" ? "EN" : "PL";
         langInput.value = language;
         localStorage.setItem("lang", language);
+        // Zaktualizuj tekst przycisku motywu po zmianie języka
+        updateThemeButtonText(darkMode, language);
     }
 
+    // Ustawienie początkowego motywu i języka
+    applyTheme(darkMode); // To już wywoła updateThemeButtonText raz
+    applyLanguage(lang);  // To nadpisze tekst przycisku motywu, ale jest potrzebne dla reszty tekstu
+
+    // Nasłuchiwanie na kliknięcia przycisków
     btnTheme.addEventListener("click", () => {
         darkMode = !darkMode;
         applyTheme(darkMode);
@@ -170,8 +319,14 @@
         applyLanguage(lang);
     });
 
-    applyTheme(darkMode);
-    applyLanguage(lang);
+    // Opcjonalnie: nasłuchiwanie na zmiany preferencji systemu (ciemny/jasny motyw)
+    prefersDarkMode.addListener(function(e) {
+        // Jeśli tryb motywu nie był ustawiony w localStorage (null), podążaj za systemem
+        if (localStorage.getItem("darkMode") === null) {
+            applyTheme(e.matches);
+        }
+    });
+
 </script>
 </body>
 </html>

@@ -38,3 +38,32 @@ body {
     color: #fbb;
     border-color: #e33;
 }
+/* Style dla motywu jasnego (domyślne) */
+.transition-theme {
+    transition: all 0.3s ease;
+    background-color: #ffffff;
+    color: #212529;
+    border-color: #dee2e6;
+}
+
+/* Style dla motywu ciemnego */
+body.dark-mode .transition-theme {
+    background-color: #2d2d2d;
+    color: #f8f9fa;
+    border-color: #444;
+}
+
+body.dark-mode .list-group-item.transition-theme {
+    background-color: #2d2d2d;
+    color: #f8f9fa;
+    border-color: #444;
+}
+
+body.dark-mode .text-muted.transition-theme {
+    color: #adb5bd !important;
+}
+
+body.dark-mode .card.transition-theme {
+    background-color: #2d2d2d;
+    border-color: #444;
+}
