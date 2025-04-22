@@ -35,17 +35,14 @@
     <form method="POST" class="bg-body-tertiary p-4 rounded shadow-sm">
         <input type="hidden" name="lang" id="langInput" value="pl">
         <div class="mb-3">
-            <label for="message" class="form-label" data-pl="Wiadomość:" data-en="Message:">Wiadomość:</label>
-            <textarea name="message" id="message" rows="3" class="form-control"></textarea>
+            {# Zastąpiono 3 inputy jednym textarea #}
+            <label for="single_input" class="form-label" data-pl="Wprowadź dane do analizy:" data-en="Enter data for analysis:">Wprowadź dane do analizy:</label>
+            <textarea name="input_data" id="single_input" rows="3" class="form-control"
+                      data-pl-placeholder="Wprowadź wiadomość, numer telefonu lub link..."
+                      data-en-placeholder="Enter message, phone number, or link..."
+                      placeholder="Wprowadź wiadomość, numer telefonu lub link..."></textarea>
         </div>
-        <div class="mb-3">
-            <label for="phone" class="form-label" data-pl="Numer telefonu:" data-en="Phone number:">Numer telefonu:</label>
-            <input type="text" name="phone" id="phone" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="link" class="form-label" data-pl="Link:" data-en="Link:">Link:</label>
-            <input type="text" name="link" id="link" class="form-control">
-        </div>
+        {# Usunięto divy mb-3 dla numeru telefonu i linku #}
         <button type="submit" class="btn btn-primary" data-pl="Sprawdź" data-en="Check">Sprawdź</button>
     </form>
 
@@ -87,76 +84,64 @@
         </div>
         {% endif %}
 
-        {# Sekcja wyników linku - Ujednolicona logika wyświetlania #}
-        {# Zakładamy, że result.link zawiera wynik lokalny, a result.virustotal wynik z VT #}
-        {% if result.link is defined or result.virustotal is defined %} {# Show this section if local OR VT result exists #}
-            {# Określamy, czy całość jest podejrzana na podstawie obu wyników #}
-            {% set link_local_suspicious = result.link is defined and result.link.is_suspicious %}
-            {% set vt_detected_flag = result.virustotal is defined and result.virustotal.detected %}
-            {% set overall_link_suspicious = link_local_suspicious or vt_detected_flag %}
+        {# Sekcja wyników linku - Dostosowana do backendu umieszczającego podsumowanie VT w details #}
+        {# Pokazujemy sekcję, jeśli wynik linku (result.link) jest zdefiniowany i ma listę szczegółów lub jest oznaczony jako podejrzany #}
+        {% if result.link is defined and (result.link.is_suspicious or result.link.details) %}
 
-            <div class="alert {{ 'alert-danger' if overall_link_suspicious else 'alert-success' }}">
+            {# Określamy ogólny status podejrzewania na podstawie flagi is_suspicious z backendu #}
+            {# Backend (endpoints.py) ustawia is_suspicious na podstawie lokalnych detekcji ORAZ wykrycia przez VT #}
+            {% set overall_link_suspicious_display = result.link.is_suspicious %}
+
+            <div class="alert {{ 'alert-danger' if overall_link_suspicious_display else 'alert-success' }}">
                 <strong data-pl="Link:" data-en="Link:">Link:</strong>
 
-                {# Wyświetlamy ogólny status #}
-                {% if overall_link_suspicious %}
+                {# Wyświetlamy ogólny status na podstawie flagi z backendu #}
+                {% if overall_link_suspicious_display %}
                     <span style="color: red;" data-pl="Podejrzany." data-en="Suspicious.">Podejrzany.</span>
                 {% else %}
                     <span style="color: green;" data-pl="Brak podejrzanej aktywności." data-en="No suspicious activity detected.">Brak podejrzanej aktywności.</span>
                 {% endif %}
 
-                {# Rozpoczynamy listę szczegółów analizy #}
-                <p data-pl="Szczegóły analizy:" data-en="Analysis Details:">Szczegóły analizy:</p>
-                <ul>
-                    {# Punkt listy dla analizy lokalnej #}
-                    {% if result.link is defined %}
-                         <li>
-                             <span data-pl="Analiza lokalna:" data-en="Local analysis:">Analiza lokalna:</span>
-                             {% if result.link.is_suspicious %}
-                                 <span style="color: red;" data-pl="Podejrzany." data-en="Suspicious.">Podejrzany.</span>
-                             {% else %}
-                                 <span style="color: green;" data-pl="Brak podejrzeń." data-en="No suspicion.">Brak podejrzeń.</span>
-                             {% endif %}
-                         </li>
-                         {# Wyświetl szczegóły lokalne jako podpunkty, jeśli są #}
-                         {% if result.link.details %}
-                             {% for reason in result.link.details %}
-                                 <li>
-                                     - <span data-pl="{{ reason.get('data-pl', reason.get('text', '')) }}" data-en="{{ reason.get('data-en', reason.get('text', '')) }}">
-                                         {{ reason.get('text', 'Brak opisu szczegółu lokalnego / No local detail description') }}
-                                     </span>
-                                 </li>
-                             {% endfor %}
-                         {% endif %}
-                     {% else %}
-                         {# Komunikat jeśli wynik lokalny w ogóle nie przyszedł #}
-                         <li><span data-pl="Brak wyniku lokalnego sprawdzenia linku." data-en="No local link check result.">Brak wyniku lokalnego sprawdzenia linku.</span></li>
-                     {% endif %}
+                {# Lista szczegółów analizy - Iterujemy tylko po result.link.details #}
+                {% if result.link.details %} {# Tylko jeśli lista szczegółów nie jest pusta #}
+                     <p data-pl="Szczegóły analizy:" data-en="Analysis Details:">Szczegóły analizy:</p>
+                    <ul>
+                        {% for detail in result.link.details %} {# Pętla po elementach z listy details z backendu #}
+                            <li>
+                                {# Wyświetlamy tekst szczegółu. To może być powód lokalny LUB podsumowanie z VirusTotal #}
+                                <span data-pl="{{ detail.get('data-pl', detail.get('text', '')) }}" data-en="{{ detail.get('data-en', detail.get('text', '')) }}">
+                                    {# Domyślny tekst na wypadek braku danych w szczególe #}
+                                    {{ detail.get('text', 'Nieznany szczegół analizy / Unknown analysis detail') }}
+                                </span>
+                                {# KOMENTARZ: Brzmienie szczegółów lokalnych (np. "Domena znaleziona w naszej bazie danych podejrzanych domen.") #}
+                                {# oraz podsumowania VirusTotal ("VirusTotal: X / Y...") jest generowane w api/endpoints.py w liście details. #}
+                                {# Aby poprawić samo brzmienie (np. usunąć "w URL" lub zmienić "Lokalnie"), musisz edytować stringi data-pl/data-en w endpoints.py #}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% elif not overall_link_suspicious_display %}
+                     {# Ten blok wyświetli się, jeśli result.link jest zdefiniowane i nie jest podejrzane, ale lista details była pusta (np. backend zwrócił pustą listę details) #}
+                     {# Jako fallback, wyświetlamy ogólny komunikat, jeśli nie ma żadnych szczegółów pomimo nie-podejrzanego statusu #}
+                     {# Idealnie backend powinien zwracać co najmniej jeden szczegół w details, jeśli result.link jest zdefiniowane #}
+                     <p data-pl="Brak dodatkowych szczegółów analizy." data-en="No additional analysis details.">Brak dodatkowych szczegółów analizy.</p>
+                {% endif %}
 
-                    {# Punkt listy dla analizy VirusTotal #}
-                    {% if result.virustotal is defined %} {# Sprawdzamy, czy wynik VT istnieje #}
-                         <li>
-                             <span data-pl="Analiza VirusTotal:" data-en="VirusTotal analysis:">Analiza VirusTotal:</span>
-                             {% if result.virustotal.get('error') %} {# Wyświetl błąd VT, jeśli wystąpił #}
-                                  <span style="color: orange;" data-pl="Błąd:" data-en="Error:">Błąd:</span> {{ result.virustotal.error }}
-                             {% else %} {# Jeśli nie ma błędu, wyświetl wyniki skanowania #}
-                                  <span data-pl="Wykryte przez silniki:" data-en="Detected by engines:">Wykryte przez silniki:</span> {{ result.virustotal.positives }} / {{ result.virustotal.total }}
-                                  <br><span data-pl="Data ostatniego skanowania:" data-en="Last scan date:">Data ostatniego skanowania:</span> {{ result.virustotal.scan_date }}
-                             {% endif %}
-                         </li>
-                     {% else %} {# Jeśli wynik VT w ogóle nie przyszedł #}
-                         <li><span data-pl="Brak wyniku VirusTotal (np. skanowanie pominięto lub błąd połączenia)." data-en="No VirusTotal result (e.g., scan skipped or connection error).">Brak wyniku VirusTotal (np. skanowanie pominięto lub błąd połączenia).</span></li>
-                     {% endif %}
+                {# Opcjonalnie: można wyświetlić status is_valid z wyniku linku #}
+                {% if result.link is defined and result.link.is_valid is defined %}
+                   <p data-pl="Format URL poprawny: {{ 'Tak' if result.link.is_valid else 'Nie' }}" data-en="URL format valid: {{ 'Yes' if result.link.is_valid else 'No' }}">Format URL poprawny: {{ 'Tak' if result.link.is_valid else 'Nie' }}</p>
+                {% endif %}
 
-                     {# Opcjonalnie: Możesz dodać tu inne punkty listy dla innych analiz, jeśli będą w przyszłości #}
-
-                </ul> {# Koniec listy szczegółów analizy #}
-
-                {# Opcjonalnie: można wyświetlić status is_valid z wyniku lokalnego #}
-                {# {% if result.link is defined %}<p>Is Valid URL: {{ result.link.is_valid }}</p>{% endif %} #}
 
             </div> {# <-- Koniec div.alert dla wyniku linku #}
-        {% endif %} {# <-- Koniec głównego ifa dla linku/VT #}
+
+        {# Komunikat, jeśli wynik linku (result.link) w ogóle nie przyszedł (np. puste pole linku w formularzu) #}
+        {% elif result.link is not defined %}
+            {# Ten blok elif wyświetli się, jeśli result.link nie zostało zdefiniowane przez backend, np. w przypadku pustego inputu linku #}
+             <div class="alert alert-info">
+                <span data-pl="Podaj dane do analizy." data-en="Provide data for analysis.">Podaj dane do analizy.</span>
+            </div>
+        {% endif %} {# <-- Koniec głównego if/elif dla linku #}
+
 
     </div> {# <-- Koniec div.mt-4 dla sekcji wyników #}
 
@@ -177,8 +162,15 @@
                         <ul class="list-group list-group-flush">
                             <li class="list-group-item transition-theme" data-pl="Wykrywanie podejrzanych wiadomości tekstowych" data-en="Detects suspicious text messages">Wykrywanie podejrzanych wiadomości tekstowych</li>
                             <li class="list-group-item transition-theme" data-pl="Weryfikacja numerów telefonów i linków" data-en="Phone number and link verification">Weryfikacja numerów telefonów i linków</li>
-                            <li class="list-group-item transition-theme" data-pl="Integracja z VirusTotal" data-en="Integration with VirusTotal">Integracja z VirusTotal</li>
                             <li class="list-group-item transition-theme">
+                                <details>
+                                    <summary data-pl="Integracja z VirusTotal" data-en="Integration with VirusTotal">Integracja z VirusTotal</summary>
+                                    <p class="text-muted mt-2 transition-theme" data-pl="Analiza linków obejmuje skanowanie VirusTotal, jeśli klucz API jest skonfigurowany, a link wymaga dodatkowej weryfikacji (np. jest skrócony lub oznaczony lokalnie jako podejrzany)." data-en="Link analysis includes VirusTotal scanning if API key is configured and the link requires extra verification (e.g., is shortened or locally flagged as suspicious).">
+                                        Analiza linków obejmuje skanowanie VirusTotal, jeśli klucz API jest skonfigurowany, a link wymaga dodatkowej weryfikacji (np. jest skrócony lub oznaczony lokalnie jako podejrzany).
+                                    </p>
+                                </details>
+                            </li>
+                             <li class="list-group-item transition-theme">
                                 <details>
                                     <summary data-pl="Obszerne bazy danych" data-en="Extensive databases">Obszerne bazy danych</summary>
                                     <p class="text-muted mt-2 transition-theme" data-pl="Nasza baza zawiera ponad 186 000 podejrzanych domen." data-en="Our database contains over 186,000 suspicious domains.">
@@ -234,22 +226,26 @@
     </div> {# <-- Koniec div.container mt-4 dla Informacji/Statystyk #}
 
     {# Ten paragraf był poza kontenerem - dodano klasy dla lepszego wyglądu #}
-    <p class="mt-4 text-center text-muted" data-pl="Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikanie zagrożeń." data-en="Our app provides users with an easy way to recognize fraud attempts and avoid threats.">
-        Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikanie zagrożeń.
+    <p class="mt-4 text-center text-muted" data-pl="Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikania zagrożeń." data-en="Our app provides users with an easy way to recognize fraud attempts and avoid threats.">
+        Nasza aplikacja zapewnia użytkownikom łatwy sposób na rozpoznawanie prób oszustw i unikania zagrożeń.
     </p>
 
 </div> {# <-- Koniec głównego div.container py-5 #}
 
-{# Skrypty JS - Bootstrap JS jest potrzebny dla niektórych komponentów (np. modali, dropdownów), ale nie dla samego układu grid/flex #}
-{# Dodano skrypt Bootstrap JS #}
+
+{# Skrypty JS - Standardowa praktyka to umieszczanie ich na końcu body #}
+
+{# Skrypt Bootstrap JS - TYLKO JEDEN RAZ #}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+{# Twój niestandardowy kod JavaScript - MUSI BYĆ W TYCH TAGACH SCRIPT - TYLKO JEDEN RAZ #}
 <script>
-    const btnTheme = document.getElementById("toggleTheme");
+const btnTheme = document.getElementById("toggleTheme");
     const btnLang = document.getElementById("toggleLanguage");
     const themeText = document.getElementById("theme-btn-text");
     const langText = document.getElementById("lang-btn-text");
     const langInput = document.getElementById("langInput");
+    const singleInput = document.getElementById("single_input"); // Pole pojedynczego wejścia
 
     // Preferencja systemu użytkownika dla trybu ciemnego
     const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
@@ -268,65 +264,115 @@
     function updateThemeButtonText(isDarkMode, currentLang) {
         const textPl = isDarkMode ? "Jasny motyw" : "Ciemny motyw";
         const textEn = isDarkMode ? "Light theme" : "Dark theme";
-        // Aktualizujemy dataset na przycisku, aby prawidłowo działała zmiana języka PO zmianie motywu
-        themeText.dataset.pl = textPl;
-        themeText.dataset.en = textEn;
-        // Ustawiamy widoczny tekst na podstawie aktualnie wybranego języka
-        themeText.textContent = currentLang === "pl" ? textPl : textEn;
+        // Sprawdzamy, czy element themeText istnieje przed próbą dostępu do jego właściwości
+        if (themeText) {
+            themeText.dataset.pl = textPl;
+            themeText.dataset.en = textEn;
+            themeText.textContent = currentLang === "pl" ? textPl : textEn;
+        }
 
-        // Aktualizujemy ikonę
-        const themeIcon = btnTheme.querySelector('i');
+
+        // Sprawdzamy, czy element btnTheme istnieje przed próbą znalezienia w nim ikony
+        const themeIcon = btnTheme ? btnTheme.querySelector('i') : null;
         if (themeIcon) {
             themeIcon.classList.toggle('fa-moon', isDarkMode);
             themeIcon.classList.toggle('fa-sun', !isDarkMode);
+        } else if (!btnTheme) {
+             console.warn("Element with ID 'toggleTheme' not found."); // Dodaj ostrzeżenie, jeśli przycisk motywu nie został znaleziony
+        }
+    }
+
+    // Definicja funkcji applyTheme - SPRAWDŹ DOKŁADNIE TĘ SEKCJE I SEKCJĘ POWYŻEJ!
+    function applyTheme(isDarkMode) {
+        // Sprawdzamy, czy document.body istnieje (zawsze powinien w tym miejscu)
+        if (document.body) {
+             document.body.classList.toggle("dark-mode", isDarkMode);
+             // Aktualizuj tekst przycisku i ikonę
+             updateThemeButtonText(isDarkMode, lang); // Ta funkcja wywołuje updateThemeButtonText
+             localStorage.setItem("darkMode", isDarkMode);
+        } else {
+             console.error("document.body not found. Cannot apply theme class.");
         }
     }
 
 
-    function applyTheme(isDarkMode) {
-        document.body.classList.toggle("dark-mode", isDarkMode);
-        // Aktualizuj tekst przycisku i ikonę
-        updateThemeButtonText(isDarkMode, lang);
-        localStorage.setItem("darkMode", isDarkMode);
-    }
-
+    // Definicja funkcji applyLanguage z aktualizacją placeholdera
     function applyLanguage(language) {
+        // Sprawdzamy, czy elementy istnieją
         document.querySelectorAll("[data-pl]").forEach(el => {
-            // Sprawdzamy, czy element ma oba atrybuty data-pl i data-en
             if (el.dataset.pl && el.dataset.en) {
                  el.textContent = el.dataset[language];
             }
         });
-        langText.textContent = language === "pl" ? "EN" : "PL";
-        langInput.value = language;
+         // Aktualizacja placeholdera dla pojedynczego pola wejściowego
+        if (singleInput) { // Sprawdzenie, czy element singleInput istnieje
+             singleInput.placeholder = singleInput.dataset[language + '-placeholder'] || singleInput.placeholder;
+        } else {
+             console.warn("Element with ID 'single_input' not found."); // Dodaj ostrzeżenie
+        }
+
+
+        if (langText) {
+             langText.textContent = language === "pl" ? "EN" : "PL";
+        } else {
+             console.warn("Element with ID 'lang-btn-text' not found."); // Dodaj ostrzeżenie
+        }
+
+        if (langInput) {
+             langInput.value = language;
+        } else {
+             console.warn("Element with ID 'langInput' not found."); // Dodaj ostrzeżenie
+        }
+
+
         localStorage.setItem("lang", language);
-        // Zaktualizuj tekst przycisku motywu po zmianie języka
-        updateThemeButtonText(darkMode, language);
+        updateThemeButtonText(darkMode, language); // Ta funkcja wywołuje updateThemeButtonText
     }
 
-    // Ustawienie początkowego motywu i języka
-    applyTheme(darkMode); // To już wywoła updateThemeButtonText raz
-    applyLanguage(lang);  // To nadpisze tekst przycisku motywu, ale jest potrzebne dla reszty tekstu
+    // Ustawienie początkowego motywu i języka - BŁĄD POJAWIŁ SIĘ TUTAJ (ReferenceError: applyTheme)
+    // To oznacza, że funkcja applyTheme nie została zdefiniowana zanim doszło do tej linii.
+    // PROBLEM MUSI BYĆ W KODZIE PRZED DEFINICJĄ applyTheme.
+    applyTheme(darkMode);
+    applyLanguage(lang);
 
-    // Nasłuchiwanie na kliknięcia przycisków
-    btnTheme.addEventListener("click", () => {
-        darkMode = !darkMode;
-        applyTheme(darkMode);
-    });
+    // Nasłuchiwanie na kliknięcia przycisków - SPRAWDŹ DOKŁADNIE TĘ SEKCJE
+    // Sprawdzamy, czy elementy btnTheme i btnLang istnieją przed dodaniem listenerów
+    if (btnTheme) {
+        btnTheme.addEventListener("click", () => {
+            darkMode = !darkMode;
+            applyTheme(darkMode); // Ta funkcja wywołuje applyTheme
+        });
+    } else {
+         console.warn("Element with ID 'toggleTheme' not found. Cannot add click listener.");
+    }
 
-    btnLang.addEventListener("click", () => {
-        lang = lang === "pl" ? "en" : "pl";
-        applyLanguage(lang);
-    });
 
-    // Opcjonalnie: nasłuchiwanie na zmiany preferencji systemu (ciemny/jasny motyw)
-    prefersDarkMode.addListener(function(e) {
-        // Jeśli tryb motywu nie był ustawiony w localStorage (null), podążaj za systemem
-        if (localStorage.getItem("darkMode") === null) {
-            applyTheme(e.matches);
-        }
-    });
+    if (btnLang) {
+        btnLang.addEventListener("click", () => {
+            lang = lang === "pl" ? "en" : "pl";
+            applyLanguage(lang); // Ta funkcja wywołuje applyLanguage
+        });
+    } else {
+         console.warn("Element with ID 'toggleLanguage' not found. Cannot add click listener.");
+    }
 
+
+    // Nasłuchiwanie na zmiany preferencji systemu (ciemny/jasny motyw) - SPRAWDŹ DOKŁADNIE TĘ SEKCJE
+    // Sprawdzamy, czy prefersDarkMode istnieje
+    if (prefersDarkMode) {
+        prefersDarkMode.addListener(function(e) {
+            // Jeśli tryb motywu nie był ustawiony w localStorage (null), podążaj za systemem
+            if (localStorage.getItem("darkMode") === null) {
+                applyTheme(e.matches); // Ta funkcja wywołuje applyTheme
+            }
+        });
+    } else {
+         console.warn("'prefers-color-scheme' media query not supported or not found."); // Dodaj ostrzeżenie
+    }
+
+
+    console.log("AntiScam Pro custom JavaScript script finished execution."); // Dodaj linię kontrolną na końcu
 </script>
-</body>
-</html>
+
+</body> {# POJEDYNCZY TAG ZAMYKAJĄCY CIAŁO STRONY #}
+</html> {# POJEDYNCZY TAG ZAMYKAJĄCY CAŁY DOKUMENT #}

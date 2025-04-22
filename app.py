@@ -1,25 +1,20 @@
 # app.py
 import os
 import logging
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for # Import redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 # Import functions from api/endpoints.py
-# Note: This version assumes check_link *does* call VT internally based on the original code provided by the user for app.py
-# If you are using the reverted endpoints.py (local only), you'll need to adjust check_link logic below.
-# Based on the user providing *this* app.py for modification, I'll stick to its implied structure.
+# check_link is assumed to handle VT internally and return combined result for 'link' key
 from api.endpoints import check_message, check_phone, check_link
-
-# Assume scan_url_with_virustotal is NOT called separately by app.py in this version,
-# as the comment in the user's provided code suggests check_link handles VT.
-# If you are using the reverted endpoints.py (local only), you'll need to import and call VT here.
-
+# Import Validators from api/validators.py - Needed for type detection
+from api.validators import Validators
 
 # Konfiguracja logowania
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-# Setting secret_key is crucial for session security.
+# Setting secret_key is crucial for session security. Change this in production!
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "domyslny_klucz_ktory_powinien_byc_zmieniony")
 
 # Global statistics (since server start)
@@ -36,12 +31,14 @@ def increment_stat(key):
     # Global
     GLOBAL_STATS[key] += 1
 
+# ZASTĄP CAŁĄ FUNKCJĘ index PONIŻSZYM KODEM
 @app.route("/", methods=["GET", "POST"])
 def index():
     """
     Handles the main page, processing form submissions (POST)
     and displaying results after redirect (GET).
     Implements Post/Redirect/Get (PRG) pattern.
+    Processes a single input field, detecting data type (Link, Phone, Message).
     """
     user_ip = request.remote_addr
 
@@ -58,49 +55,64 @@ def index():
         # Clear previous results from session before processing new ones
         session.pop('check_results', None)
 
-        message = request.form.get("message")
-        phone = request.form.get("phone")
-        link = request.form.get("link")
+        # Get data from the single input field named "input_data"
+        input_data = request.form.get("input_data", "").strip() # Get and strip whitespace
 
-        # Store results from the current POST checks temporarily
         current_check_results = {}
 
-        if message:
-            message_result = check_message(message)
-            current_check_results["message"] = message_result
-            increment_stat("messages_checked") # Increment upon successful check process
-            logger.info(f"Processed message check for POST. Result: {message_result.get('is_suspicious', 'N/A')}")
+        if input_data:
+            logger.info(f"Received input data: '{input_data}'")
 
-        if phone:
-            phone_result = check_phone(phone)
-            current_check_results["phone"] = phone_result
-            increment_stat("phones_checked") # Increment upon successful check process
-            logger.info(f"Processed phone check for POST. Result: {phone_result.get('is_suspicious', 'N/A')}")
+            # --- Type Detection Logic ---
+            # Implement a simple prioritization: Link -> Phone -> Message
+            # This order can be adjusted based on expected input types
 
-        if link:
-            # Note: This version assumes check_link handles VT internally
-            link_result = check_link(link)
-            current_check_results["link"] = link_result
-            # If check_link returns VT data integrated, this is correct.
-            # If using the reverted endpoints.py (local only), you'd call VT here:
-            # virustotal_result = scan_url_with_virustotal(link)
-            # current_check_results["virustotal"] = virustotal_result
+            # 1. Check if it's a Link (URL) first
+            # Use Validators.is_valid_url from api/validators.py
+            if Validators.is_valid_url(input_data):
+                logger.info(f"Input detected as URL: {input_data}")
+                # Call check_link. Based on your endpoints.py, it returns the combined result dictionary for 'link'
+                link_result = check_link(input_data)
+                # Store the result dictionary under the 'link' key for the HTML template to read
+                current_check_results["link"] = link_result
+                increment_stat("links_checked") # Increment link stat
+                logger.info(f"Processed link check. Result: {link_result.get('is_suspicious', 'N/A')}")
 
-            increment_stat("links_checked") # Increment upon successful check process
-            logger.info(f"Processed link check for POST. Result: {link_result.get('is_suspicious', 'N/A')}, Source: {link_result.get('source', 'N/A')}")
+            # 2. Else, check if it's a Phone Number
+            # Use Validators.is_valid_phone from api/validators.py
+            elif Validators.is_valid_phone(input_data):
+                 logger.info(f"Input detected as Phone: {input_data}")
+                 phone_result = check_phone(input_data)
+                 # Store the result dictionary under the 'phone' key for the HTML template
+                 current_check_results["phone"] = phone_result
+                 increment_stat("phones_checked") # Increment phone stat
+                 logger.info(f"Processed phone check. Result: {phone_result.get('is_suspicious', 'N/A')}")
 
-        # Store the results in session to be retrieved by the subsequent GET request
+            # 3. Else, if it's neither a valid URL nor a valid phone number, assume it's a Message
+            else:
+                 logger.info(f"Input treated as Message: {input_data}")
+                 message_result = check_message(input_data)
+                 # Store the result dictionary under the 'message' key for the HTML template
+                 current_check_results["message"] = message_result
+                 increment_stat("messages_checked") # Increment message stat
+                 logger.info(f"Processed message check. Result: {message_result.get('is_suspicious', 'N/A')}")
+
+        else:
+            logger.info("Received empty input data.")
+            # If input is empty, current_check_results will be empty.
+            # The HTML template is designed to handle this gracefully (no results displayed).
+
+        # Store the results from this single check in the session to be retrieved by the subsequent GET request
         session['check_results'] = current_check_results
 
-        # Redirect to the same URL with GET method
-        # This prevents form re-submission on refresh
+        # Redirect to the same URL with GET method to display results and prevent form re-submission on refresh
         logger.info("Redirecting after POST.")
         return redirect(url_for('index'))
 
     # --- Handle GET Request (Retrieve & Display) ---
     else: # request.method == "GET"
         # Retrieve the results from session if they exist (after a POST redirect)
-        # Use session.pop to get the value and remove it in one step
+        # Use session.pop to get the value and remove it in one step. Defaults to empty dict if no results in session.
         result = session.pop('check_results', {})
         logger.info(f"Handling GET request. Results retrieved from session: {bool(result)}")
 
@@ -111,15 +123,16 @@ def index():
             "links_checked": session.get("links_checked", 0)
         }
 
-        # Render the template with the retrieved results (or empty result dict for a normal GET)
+        # Render the template with the retrieved results (or empty result dict for a normal initial GET)
+        # The 'result' dictionary will contain 'message', 'phone', or 'link' key based on input type detected in POST
         return render_template("index.html",
-                               result=result, # Will be empty for a normal GET, populated after POST+redirect
+                               result=result, # Pass the result dictionary (can be empty or contain one check result)
                                global_stats=GLOBAL_STATS,
                                session_stats=session_stats)
 
 # --- API ENDPOINTS ---
-# API endpoints typically do NOT use PRG, they return JSON directly.
-# The stat incrementation here is correct (increments per valid POST to API).
+# These endpoints are designed for specific input types and typically return JSON.
+# They remain unchanged as they are separate from the main single-input form.
 
 @app.route("/api/check_message", methods=["POST"])
 def api_check_message():
@@ -131,7 +144,7 @@ def api_check_message():
         return jsonify({"error": "Missing 'message' parameter."}), 400
 
     message_result = check_message(message)
-    increment_stat("messages_checked") # Increment upon successful API check process
+    increment_stat("messages_checked") # Increment message stat for API
     logger.info(f"API check_message: Result: {message_result.get('is_suspicious', 'N/A')}")
     return jsonify(message_result)
 
@@ -145,7 +158,7 @@ def api_check_phone():
          return jsonify({"error": "Missing 'phone_number' parameter."}), 400
 
     phone_result = check_phone(phone)
-    increment_stat("phones_checked") # Increment upon successful API check process
+    increment_stat("phones_checked") # Increment phone stat for API
     logger.info(f"API check_phone: Result: {phone_result.get('is_suspicious', 'N/A')}")
     return jsonify(phone_result)
 
@@ -158,17 +171,12 @@ def api_check_link():
         logger.warning("API check_link: Missing 'url' parameter.")
         return jsonify({"error": "Missing 'url' parameter."}), 400
 
-    # Note: This version assumes check_link handles VT internally
+    # Note: check_link in your endpoints.py handles VT internally and returns the combined dict
     link_result = check_link(url)
-    # If using the reverted endpoints.py (local only), you'd call VT here and combine results for the JSON response:
-    # from api.virustotal import scan_url_with_virustotal
-    # virustotal_result = scan_url_with_virustotal(url)
-    # combined_response = {"link": link_result, "virustotal": virustotal_result} # Or integrate them differently
 
-    increment_stat("links_checked") # Increment upon successful API check process
+    increment_stat("links_checked") # Increment link stat for API
     logger.info(f"API check_link: Result: {link_result.get('is_suspicious', 'N/A')}, Source: {link_result.get('source', 'N/A')}")
-    # If check_link integrates VT, return its result. If not, return a combined dict.
-    # Assuming check_link integrates VT based on the user's previous app.py code structure:
+    # Return the combined result dictionary from check_link
     return jsonify(link_result)
 
 
